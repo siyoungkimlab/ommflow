@@ -1,11 +1,17 @@
 # ommflow
 
+[![Tests](https://github.com/siyoungkimlab/ommflow/actions/workflows/tests.yml/badge.svg)](https://github.com/siyoungkimlab/ommflow/actions/workflows/tests.yml)
+[![Documentation](https://readthedocs.org/projects/ommflow/badge/?version=latest)](https://ommflow.readthedocs.io/en/latest/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 `ommflow` prepares and runs explicit-solvent protein molecular dynamics with
 OpenMM. It reads hydrogen-complete PDB structures and structural-only DMS or
 MAE files, applies a selected protein and water force field, solvates and
 neutralizes the system, equilibrates it, and runs restartable production MD.
 Protein-only operation is the default. Optional automatic GAFF 2.11 ligand
 parameterization is available for chemically annotated DMS and MAE inputs.
+
+Full documentation: <https://ommflow.readthedocs.io>
 
 ## Requirements
 

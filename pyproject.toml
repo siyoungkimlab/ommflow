@@ -42,6 +42,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/siyoungkimlab/ommflow"
+Documentation = "https://ommflow.readthedocs.io"
 Source = "https://github.com/siyoungkimlab/ommflow"
 Issues = "https://github.com/siyoungkimlab/ommflow/issues"
 
