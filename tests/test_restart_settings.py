@@ -104,36 +104,6 @@ def test_an_explicit_selector_requires_early_stop(tmp_path: Path) -> None:
     require_early_stop_for_selectors(parse_arguments(["--early-stop", "--monitor-chain", "B"]))
 
 
-def test_resuming_a_legacy_run_directory_leaves_one_name_per_setting(
-    tmp_path: Path,
-) -> None:
-    final_toml = tmp_path / "final.toml"
-    final_toml.write_text(
-        'input_pdb = "1IRK.pdb"\n'
-        'output_dir = "1IRK"\n'
-        'protein_force_field = "amber19sb"\n'
-        'water_model = "opc"\n'
-        "production_ns = 1.0\n"
-        "equilibration_ps = 100.0\n"
-        "report_interval_ps = 10.0\n"
-        "checkpoint_interval_ps = 10.0\n",
-        encoding="utf-8",
-    )
-    saved = load_configuration(final_toml)
-    assert saved["production_report_interval_ns"] == 0.01
-
-    args = parse_arguments(["--workdir", str(tmp_path)])
-    for setting, _ in RESTARTABLE_SETTINGS:
-        if setting in saved:
-            setattr(args, setting, saved[setting])
-    update_restart_settings(final_toml, args)
-
-    reloaded = load_configuration(final_toml)
-    assert reloaded["production_report_interval_ns"] == 0.01
-    assert reloaded["checkpoint_interval_ns"] == 0.01
-    assert reloaded["equilibration_ns"] == 0.1
-
-
 def test_an_empty_work_directory_is_a_new_run(tmp_path: Path) -> None:
     from ommflow.lib.restart import is_restart
 

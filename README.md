@@ -253,10 +253,6 @@ Time-based user settings use nanoseconds except `integration_fs`, which is in
 femtoseconds. The default 2 fs timestep requires the script's hydrogen-bond
 constraints and rigid-water settings.
 
-`saltM`, `temperature`, and `pressure` are the current TOML names. Legacy
-`salt_molarity`, `temperature_k`, and `pressure_bar` are accepted only as
-migration aliases; do not use an old and new name together.
-
 ## Input structures
 
 The positional `input_structure` argument accepts one of:

@@ -81,10 +81,6 @@ All user-facing durations use nanoseconds except ``integration_fs``, which is
 in femtoseconds. The CLI uses kebab-case equivalents, such as
 ``--production-ns`` and ``--integration-fs``.
 
-``saltM``, ``temperature``, and ``pressure`` are the current TOML names.
-For migration, ``salt_molarity``, ``temperature_k``, and ``pressure_bar`` are
-accepted as aliases, but an alias cannot appear alongside its current name.
-
 Ligands
 -------
 

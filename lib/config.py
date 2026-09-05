@@ -61,19 +61,6 @@ CONFIGURATION_KEYS = {
     *DEFAULTS,
     "platform",
 }
-LEGACY_CONFIGURATION_KEYS = {
-    "input_pdb": "input_structure",
-    "output_dir": "workdir",
-    "protein_force_field": "proteinff",
-    "water_model": "waterff",
-    "salt_molarity": "saltM",
-    "temperature_k": "temperature",
-    "pressure_bar": "pressure",
-    "equilibration_ps": "equilibration_ns",
-    "report_interval_ps": "production_report_interval_ns",
-    "checkpoint_interval_ps": "checkpoint_interval_ns",
-    "report_interval_ns": "production_report_interval_ns",
-}
 _NUMERIC_KEYS = {
     "padding_nm",
     "cutoff_nm",
@@ -178,26 +165,9 @@ confirmation_checks = 2
 
 
 def load_configuration(path: Path) -> dict:
-    """Load TOML settings, accepting and migrating supported legacy names."""
+    """Load and validate TOML settings."""
     with path.open("rb") as handle:
         configuration = tomllib.load(handle)
-
-    for legacy_key, current_key in LEGACY_CONFIGURATION_KEYS.items():
-        if legacy_key not in configuration:
-            continue
-        if current_key in configuration:
-            raise ValueError(
-                f"Configuration cannot contain both '{legacy_key}' and "
-                f"'{current_key}'."
-            )
-        value = configuration.pop(legacy_key)
-        if legacy_key.endswith("_ps"):
-            if isinstance(value, bool) or not isinstance(value, Real):
-                raise ValueError(
-                    f"Configuration setting '{legacy_key}' must be a number."
-                )
-            value /= 1000
-        configuration[current_key] = value
 
     unknown_keys = configuration.keys() - CONFIGURATION_KEYS
     if unknown_keys:
@@ -700,8 +670,7 @@ def update_restart_settings(path: Path, args: argparse.Namespace) -> None:
 
     ``production_ns`` and ``integration_fs`` are excluded: the first is written
     by :func:`update_production_target` and the second can never change once a
-    serialized integrator exists.  A migrated legacy name is dropped as its
-    current name is written, so the result never carries both.
+    serialized integrator exists.
     """
     contents = path.read_text(encoding="utf-8")
     for setting, _ in RESTARTABLE_SETTINGS:
@@ -713,14 +682,6 @@ def update_restart_settings(path: Path, args: argparse.Namespace) -> None:
                 rf"^{re.escape(setting)} = .*\n?", "", contents, flags=re.MULTILINE
             )
             continue
-        for legacy_key, current_key in LEGACY_CONFIGURATION_KEYS.items():
-            if current_key == setting:
-                contents = re.sub(
-                    rf"^{re.escape(legacy_key)} = .*\n?",
-                    "",
-                    contents,
-                    flags=re.MULTILINE,
-                )
         replacement = f"{setting} = {_toml_value(value)}"
         contents, replacements = re.subn(
             rf"^{re.escape(setting)} = .*$",
