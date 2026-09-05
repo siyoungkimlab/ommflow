@@ -472,6 +472,12 @@ For early-stop runs, `pocket.json` is restored rather than recomputed;
 automatically under the same early-stop target. Disable `--early-stop` or set
 a larger explicit `--production-ns` target to continue deliberately.
 
+## Contributing
+
+`main` takes changes through pull requests whose checks have passed. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the commit
+message hook, and the conventions the test suite enforces.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

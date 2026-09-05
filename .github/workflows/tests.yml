@@ -55,3 +55,18 @@ jobs:
           python -m pip install -r docs/requirements.txt
       - name: Build docs as strictly as ReadTheDocs should
         run: python -m sphinx -b html -W docs docs/_build/html
+
+  # One stable context for branch protection to require. Matrix job names
+  # change whenever the matrix does; this one does not.
+  all-checks:
+    name: all checks
+    if: always()
+    needs: [tests, docs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify every job succeeded
+        run: |
+          echo "tests: ${{ needs.tests.result }}"
+          echo "docs:  ${{ needs.docs.result }}"
+          [ "${{ needs.tests.result }}" = "success" ] \
+            && [ "${{ needs.docs.result }}" = "success" ]
