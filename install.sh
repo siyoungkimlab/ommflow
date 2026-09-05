@@ -2,12 +2,13 @@
 # Install ommflow.
 #
 # Two paths, because the dependency stack is split:
-#   --pip-only  a plain venv from PyPI. Everything except automatic GAFF
-#               ligands: preparation, MD, restarts, and early stopping on a
-#               peptide binder or any standard-force-field target.
-#   (default)   a conda-forge environment from environment.yml, adding the
-#               automatic GAFF ligand path. The OpenFF packages and AmberTools
-#               are not published to PyPI, so conda is the only way to get them.
+#   (default)   a conda-forge environment from environment.yml: the full
+#               install, including automatic GAFF ligand parameterization.
+#               This is what you want. The OpenFF packages and AmberTools are
+#               not published to PyPI, so conda is the only way to get them.
+#   --pip-only  a plain venv from PyPI, for environments without conda at all.
+#               Everything except automatic GAFF ligands, so a DMS or MAE input
+#               carrying a small molecule will not run.
 #
 # Usage:
 #   bash install.sh [NAME] [--pip-only]
@@ -68,12 +69,38 @@ else
     # shellcheck disable=SC1091
     source "$(conda info --base)/etc/profile.d/conda.sh"
 
+    # openmmforcefields pulls in openff-toolkit, which pulls openff-nagl and
+    # its PyTorch stack, so this environment is well over 200 packages. Conda's
+    # classic solver takes minutes on a graph that size; libmamba takes
+    # seconds. libmamba ships with conda 23.10 and later and needs no separate
+    # tool, so prefer it and only fall back to the mamba CLI.
+    if conda create --help 2>&1 | grep -q libmamba; then
+        # Set even though it is the modern default, in case this conda is
+        # configured back to the classic solver.
+        export CONDA_SOLVER=libmamba
+        SOLVER=conda
+        echo "==> Solving with conda's libmamba solver"
+    elif command -v mamba >/dev/null 2>&1; then
+        SOLVER=mamba
+        echo "==> This conda has no libmamba solver; solving with mamba instead"
+    else
+        SOLVER=conda
+        echo "Warning: this conda predates the libmamba solver, so the solve"
+        echo "         below may take several minutes. To fix it permanently:"
+        echo "             conda update -n base -c conda-forge conda"
+        echo "         or, without changing conda's version:"
+        echo "             conda install -n base -c conda-forge conda-libmamba-solver"
+        echo "             conda config --set solver libmamba"
+        echo
+    fi
+
     if conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
-        echo "==> Updating existing environment '$ENV_NAME'"
-        conda env update -n "$ENV_NAME" -f "$REPO_DIR/environment.yml" --prune
+        echo "==> Updating existing environment '$ENV_NAME' (this can take several minutes)"
+        "$SOLVER" env update -n "$ENV_NAME" -f "$REPO_DIR/environment.yml" --prune
     else
         echo "==> Creating environment '$ENV_NAME' from environment.yml"
-        conda env create -n "$ENV_NAME" -f "$REPO_DIR/environment.yml"
+        echo "    Over 200 packages to solve and download."
+        "$SOLVER" env create -n "$ENV_NAME" -f "$REPO_DIR/environment.yml"
     fi
     conda activate "$ENV_NAME"
     PYTHON="$(command -v python)"

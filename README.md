@@ -32,35 +32,19 @@ it can.
 the environment can do, and runs the tests:
 
 ```bash
-bash install.sh                   # conda env "ommflow", with automatic ligands
+bash install.sh                   # the full install, with automatic ligands
 bash install.sh myenv             # same, under another name
-bash install.sh --pip-only        # venv in ./ommflow, protein and peptide only
 ```
 
-The name is optional and defaults to `ommflow`. The two modes exist because the
-dependency stack is split; the sections below describe what each one installs
-and why.
+The name is optional and defaults to `ommflow`. Use this unless conda is
+unavailable to you; the sections below explain why the ligand stack cannot come
+from pip.
 
-### Protein and peptide runs
+### The standard install
 
-Protein-only runs, including peptide-binder early stopping, need nothing beyond
-OpenMM and install with plain pip:
-
-```bash
-cd ommflow
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -e .
-```
-
-### Automatic GAFF ligands
-
-Automatic GAFF ligands need more than pip can provide. The OpenFF packages
-(`openff-toolkit`, `openff-units`, `openff-utilities`, `openff-interchange`)
-and AmberTools are not published to PyPI, and `openmmforcefields` declares no
-dependencies of its own, so `pip install -e '.[ligands]'` cannot assemble a
-working setup. Use the bundled conda environment instead:
+`install.sh` with no arguments builds the conda environment, which is the
+complete installation including automatic GAFF ligand parameterization.
+Equivalently, by hand:
 
 ```bash
 conda env create -f environment.yml
@@ -68,12 +52,39 @@ conda activate ommflow
 python -m pip install -e .
 ```
 
-If you already have the OpenFF stack and AmberTools in your environment, the
-`ligands` extra adds the remaining pip-installable pieces:
+Conda is required because the OpenFF packages (`openff-toolkit`,
+`openff-units`, `openff-utilities`, `openff-interchange`) and AmberTools are
+not published to PyPI at all, and `openmmforcefields` declares no dependencies
+of its own, so pip cannot assemble a working ligand stack.
+
+The environment is over 200 packages, because `openmmforcefields` pulls in
+`openff-toolkit`, which pulls `openff-nagl` and its PyTorch stack. Conda's
+classic solver takes minutes on a dependency graph that size; the libmamba
+solver takes seconds. Measured on one machine, same specs, repodata cached:
+
+| Solver | Solve time |
+|---|---|
+| `conda --solver classic` | 277 s |
+| `conda --solver libmamba` | 4 s |
+| `mamba` | 10 s |
+
+libmamba ships with conda 23.10 and later and is the default there, so usually
+there is nothing to do; `install.sh` selects it explicitly in case conda has
+been configured back to the classic solver. It does **not** require the
+separate `mamba` command. On an older conda:
 
 ```bash
-python -m pip install -e '.[ligands]'
+conda update -n base -c conda-forge conda
 ```
+
+Those timings cover only the solve. Downloading and extracting the packages
+takes its own few minutes and no solver changes that.
+
+### Without conda
+
+`install.sh --pip-only` builds a plain venv from PyPI. It runs everything
+except automatic GAFF ligands, so a DMS or MAE input carrying a small molecule
+will be rejected. Use it only where conda is unavailable.
 
 On Linux, OpenMM's PyPI wheels require glibc 2.34 or newer. Enterprise
 distributions with an older glibc (RHEL 8 and its derivatives, common on HPC

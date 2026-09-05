@@ -3,8 +3,7 @@
 ## Setting up
 
 ```bash
-bash install.sh                      # conda env with automatic ligands
-bash install.sh --pip-only           # venv, everything except GAFF ligands
+bash install.sh                      # the full install, with automatic ligands
 ```
 
 `install.sh` reports what the environment can do and runs the test suite. See

@@ -26,29 +26,12 @@ what that environment can do, and runs the tests:
 
 The name is optional and defaults to ``ommflow``.
 
-Protein and peptide runs
-~~~~~~~~~~~~~~~~~~~~~~~~
+The standard install
+~~~~~~~~~~~~~~~~~~~~
 
-Protein-only runs, including early stopping on a peptide binder, need nothing
-beyond OpenMM and install with plain pip:
-
-.. code-block:: console
-
-   cd ommflow
-   python -m venv .venv
-   source .venv/bin/activate
-   python -m pip install --upgrade pip
-   python -m pip install -e .
-
-Automatic GAFF ligands
-~~~~~~~~~~~~~~~~~~~~~~
-
-Automatic GAFF ligand parameterization from DMS or MAE input needs more than
-pip can provide. The OpenFF packages (``openff-toolkit``, ``openff-units``,
-``openff-utilities``, ``openff-interchange``) and AmberTools are not published
-to PyPI, and ``openmmforcefields`` declares no dependencies of its own, so
-``pip install -e '.[ligands]'`` cannot assemble a working setup. Use the
-bundled conda environment:
+``install.sh`` with no arguments builds the conda environment, which is the
+complete installation including automatic GAFF ligand parameterization.
+Equivalently, by hand:
 
 .. code-block:: console
 
@@ -56,8 +39,35 @@ bundled conda environment:
    conda activate ommflow
    python -m pip install -e .
 
-If the OpenFF stack and AmberTools are already present, the ``ligands`` extra
-adds the remaining pip-installable pieces.
+Conda is required because the OpenFF packages (``openff-toolkit``,
+``openff-units``, ``openff-utilities``, ``openff-interchange``) and AmberTools
+are not published to PyPI at all, and ``openmmforcefields`` declares no
+dependencies of its own, so pip cannot assemble a working ligand stack.
+
+The environment is over 200 packages, because ``openmmforcefields`` pulls in
+``openff-toolkit``, which pulls ``openff-nagl`` and its PyTorch stack. Conda's
+classic solver takes minutes on a dependency graph that size, where the
+libmamba solver takes seconds: measured on one machine with the same specs and
+cached repodata, 277 s against 4 s.
+
+libmamba ships with conda 23.10 and later and is the default there, so usually
+there is nothing to do. ``install.sh`` selects it explicitly in case conda has
+been configured back to the classic solver, and it does not require the
+separate ``mamba`` command. On an older conda:
+
+.. code-block:: console
+
+   conda update -n base -c conda-forge conda
+
+Those timings cover the solve only. Downloading and extracting the packages
+takes its own few minutes, which no solver changes.
+
+Without conda
+~~~~~~~~~~~~~
+
+``install.sh --pip-only`` builds a plain venv from PyPI. It runs everything
+except automatic GAFF ligands, so a DMS or MAE input carrying a small molecule
+will be rejected. Use it only where conda is unavailable.
 
 Run the installed CLI:
 
