@@ -228,9 +228,18 @@ def test_documented_version_and_metadata_stay_in_step() -> None:
         f"pyproject version {version!r}"
     )
 
-    # The license file and the packaging metadata must name the same license.
+    # The license file and the packaging metadata must name the same license,
+    # and the same holder: docs/conf.py has drifted from LICENSE before.
+    license_text = (root / "LICENSE").read_text(encoding="utf-8")
     assert project["project"]["license"] == "MIT"
-    assert "MIT License" in (root / "LICENSE").read_text(encoding="utf-8")
+    assert "MIT License" in license_text
+
+    holder = re.search(r"Copyright \(c\) \d{4} (.+)", license_text)
+    assert holder is not None
+    assert holder.group(1).strip() in conf, (
+        f"LICENSE credits {holder.group(1)!r}, which docs/conf.py does not name"
+    )
+    assert project["project"]["authors"][0]["name"] == holder.group(1).strip()
 
     # ReadTheDocs must build on a Python the package actually supports.
     readthedocs = (root / ".readthedocs.yaml").read_text(encoding="utf-8")
