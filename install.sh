@@ -73,24 +73,42 @@ else
     # its PyTorch stack, so this environment is well over 200 packages. Conda's
     # classic solver takes minutes on a graph that size; libmamba takes
     # seconds. libmamba ships with conda 23.10 and later and needs no separate
-    # tool, so prefer it and only fall back to the mamba CLI.
-    if conda create --help 2>&1 | grep -q libmamba; then
+    # tool, so prefer it, then the mamba command, then whatever conda defaults
+    # to.
+    #
+    # Advertising libmamba is not the same as being able to load it: a conda
+    # whose libarchive has moved on prints "Error while loading conda entry
+    # point" and then refuses CONDA_SOLVER=libmamba outright. Detect that,
+    # because forcing the solver there turns a slow install into a failed one.
+    SOLVER=conda
+    conda_help=$(conda create --help 2>&1 || true)
+    if [ -n "${OMMFLOW_SOLVER:-}" ]; then
+        export CONDA_SOLVER="$OMMFLOW_SOLVER"
+        echo "==> Solving with conda's $OMMFLOW_SOLVER solver (OMMFLOW_SOLVER)"
+    elif printf '%s' "$conda_help" | grep -q "Error while loading conda entry point: conda-libmamba-solver"; then
+        if command -v mamba >/dev/null 2>&1; then
+            SOLVER=mamba
+            echo "==> conda cannot load its libmamba solver; using mamba instead"
+        else
+            echo "Warning: conda advertises the libmamba solver but cannot load it,"
+            echo "         so this solve falls back to the classic solver and may"
+            echo "         take several minutes. Usually a broken libarchive:"
+            echo "             conda install -n base -c conda-forge libarchive"
+            echo "         or install mamba, or set OMMFLOW_SOLVER to override."
+            echo
+        fi
+    elif printf '%s' "$conda_help" | grep -q libmamba; then
         # Set even though it is the modern default, in case this conda is
         # configured back to the classic solver.
         export CONDA_SOLVER=libmamba
-        SOLVER=conda
         echo "==> Solving with conda's libmamba solver"
     elif command -v mamba >/dev/null 2>&1; then
         SOLVER=mamba
         echo "==> This conda has no libmamba solver; solving with mamba instead"
     else
-        SOLVER=conda
         echo "Warning: this conda predates the libmamba solver, so the solve"
         echo "         below may take several minutes. To fix it permanently:"
         echo "             conda update -n base -c conda-forge conda"
-        echo "         or, without changing conda's version:"
-        echo "             conda install -n base -c conda-forge conda-libmamba-solver"
-        echo "             conda config --set solver libmamba"
         echo
     fi
 

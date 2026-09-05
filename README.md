@@ -77,6 +77,18 @@ separate `mamba` command. On an older conda:
 conda update -n base -c conda-forge conda
 ```
 
+A conda can advertise the libmamba solver and still fail to load it, printing
+`Error while loading conda entry point: conda-libmamba-solver` — usually a
+`libarchive` whose version has moved past what the plugin was built against.
+`install.sh` detects that and falls back rather than forcing a solver conda
+will refuse. To repair it:
+
+```bash
+conda install -n base -c conda-forge libarchive
+```
+
+Set `OMMFLOW_SOLVER=classic` (or `libmamba`) to override the choice entirely.
+
 Those timings cover only the solve. Downloading and extracting the packages
 takes its own few minutes and no solver changes that.
 
