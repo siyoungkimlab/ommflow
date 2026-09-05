@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ommflow"
+version = "0.1.0"
+description = "OpenMM molecular dynamics workflow"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Siyoung Kim", email = "kkssy141@gmail.com" }]
+keywords = ["molecular-dynamics", "openmm", "free-energy", "protein"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+dependencies = [
+    "numpy>=1.24",
+    # 8.5 is the first release carrying every force field and water model this
+    # workflow offers: 8.2 has no amber19, and 8.3/8.4 ship charmm36_2024.xml
+    # without its charmm36_2024/ water directory.
+    "openmm>=8.5",
+]
+
+[project.optional-dependencies]
+# Only the PyPI-installable half of the ligand stack. The OpenFF packages
+# (openff-toolkit, openff-units, openff-utilities, openff-interchange) and
+# AmberTools are not published to PyPI at all, and openmmforcefields declares no
+# dependencies, so pip cannot assemble a working GAFF setup on its own. Use
+# environment.yml, or add the rest from conda-forge:
+#   conda install -c conda-forge openff-toolkit openff-interchange ambertools
+ligands = [
+    "openmmforcefields>=0.12",
+    "rdkit>=2023.9",
+]
+dev = [
+    "pytest>=7",
+]
+
+[project.urls]
+Homepage = "https://github.com/siyoungkimlab/ommflow"
+Source = "https://github.com/siyoungkimlab/ommflow"
+Issues = "https://github.com/siyoungkimlab/ommflow/issues"
+
+[project.scripts]
+ommflow = "ommflow.bin.ommflow:main"
+
+[tool.setuptools]
+packages = ["ommflow", "ommflow.bin", "ommflow.lib"]
+
+[tool.setuptools.package-dir]
+ommflow = "."
+"ommflow.bin" = "bin"
+"ommflow.lib" = "lib"

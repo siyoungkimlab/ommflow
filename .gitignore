@@ -1,0 +1,25 @@
+# Python build and install artifacts
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.py[cod]
+
+# Test and tooling caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Sphinx output
+docs/_build/
+
+# Environments created by install.sh. Root-anchored: the default venv name is
+# "ommflow", which must not shadow a package directory of the same name.
+/.venv/
+/ommflow/
+/env/
+
+# Run directories and OpenMM outputs
+*.dcd
+*.chk

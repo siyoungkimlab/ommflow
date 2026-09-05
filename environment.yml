@@ -1,0 +1,26 @@
+# Full ommflow environment, including automatic GAFF ligand parameterization.
+#
+# The OpenFF packages and AmberTools are not published to PyPI, so the ligand
+# stack has to come from conda-forge. Protein-only runs need none of this and
+# install with plain pip; see README.md.
+#
+#   conda env create -f environment.yml
+#   conda activate ommflow
+#   pip install -e .
+name: ommflow
+channels:
+  - conda-forge
+dependencies:
+  - python >=3.12
+  - numpy >=1.24
+  # 8.5 is the first release with every force field and water model, complete.
+  - openmm >=8.5
+  # Automatic GAFF ligands.
+  - openff-toolkit >=0.14
+  - openff-interchange
+  - openmmforcefields >=0.12
+  - rdkit >=2023.9
+  # antechamber and sqm, for the AM1-BCC charges GAFF needs.
+  - ambertools
+  # Tests.
+  - pytest >=7
