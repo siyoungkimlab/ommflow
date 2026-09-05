@@ -176,3 +176,97 @@ def test_precision_config_rejects_an_unknown_value(tmp_path: Path) -> None:
     config.write_text("precision = 2\n", encoding="utf-8")
     with pytest.raises(ValueError, match="must be a string"):
         load_configuration(config)
+
+
+def _documentation_sources() -> dict[str, str]:
+    root = Path(__file__).resolve().parents[1]
+    sources = {"README.md": (root / "README.md").read_text(encoding="utf-8")}
+    for path in sorted((root / "docs").glob("*.rst")):
+        sources[path.name] = path.read_text(encoding="utf-8")
+    return sources
+
+
+def test_every_setting_is_documented() -> None:
+    """A new option is not finished until both doc surfaces mention it."""
+    from ommflow.lib.config import CONFIGURATION_KEYS, build_parser
+
+    sources = _documentation_sources()
+    readme = sources["README.md"]
+    reference = "\n".join(text for name, text in sources.items() if name != "README.md")
+
+    undocumented = sorted(
+        key
+        for key in CONFIGURATION_KEYS
+        if key not in readme or key not in reference
+    )
+    assert not undocumented, f"settings missing from the docs: {undocumented}"
+
+    # Every command-line option must appear somewhere a reader can find it.
+    options = {
+        option
+        for action in build_parser()._actions
+        for option in action.option_strings
+        if option.startswith("--") and not option.startswith("--no-")
+    }
+    everywhere = readme + reference
+    missing = sorted(option for option in options if option not in everywhere)
+    assert not missing, f"options missing from the docs: {missing}"
+
+
+def test_the_configuration_examples_match_the_real_defaults() -> None:
+    """Documented TOML must parse and must not contradict DEFAULTS."""
+    import re
+    import tomllib
+
+    from ommflow.lib.config import CONFIGURATION_KEYS, DEFAULTS
+
+    blocks: list[tuple[str, str]] = []
+    for name, text in _documentation_sources().items():
+        pattern = (
+            r"```toml\n(.*?)```"
+            if name.endswith(".md")
+            else r"code-block:: toml\n\n(.*?)(?=\n\S|\Z)"
+        )
+        for block in re.findall(pattern, text, re.S):
+            blocks.append((name, "\n".join(line.strip() for line in block.splitlines())))
+    assert blocks
+
+    for name, block in blocks:
+        settings = tomllib.loads(block)
+        for key, value in settings.items():
+            assert key in CONFIGURATION_KEYS, f"{name}: unknown setting {key}"
+            if key in DEFAULTS and key not in {"input_structure", "workdir"}:
+                assert DEFAULTS[key] == value, (
+                    f"{name}: documents {key} = {value!r} but the default is "
+                    f"{DEFAULTS[key]!r}"
+                )
+
+
+def test_documented_version_and_metadata_stay_in_step() -> None:
+    """conf.py pins a version by hand, so hold it to pyproject's."""
+    import re
+    import tomllib
+
+    root = Path(__file__).resolve().parents[1]
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    version = project["project"]["version"]
+
+    conf = (root / "docs" / "conf.py").read_text(encoding="utf-8")
+    release = re.search(r'release\s*=\s*"([^"]+)"', conf)
+    assert release is not None and release.group(1) == version, (
+        f"docs/conf.py release {release and release.group(1)!r} != "
+        f"pyproject version {version!r}"
+    )
+
+    # The license file and the packaging metadata must name the same license.
+    assert project["project"]["license"] == "MIT"
+    assert "MIT License" in (root / "LICENSE").read_text(encoding="utf-8")
+
+    # ReadTheDocs must build on a Python the package actually supports.
+    readthedocs = (root / ".readthedocs.yaml").read_text(encoding="utf-8")
+    built_on = re.search(r'python:\s*"([\d.]+)"', readthedocs)
+    minimum = project["project"]["requires-python"].lstrip(">=")
+    assert built_on is not None
+    assert tuple(map(int, built_on.group(1).split("."))) >= tuple(
+        map(int, minimum.split("."))
+    ), f"ReadTheDocs builds on {built_on.group(1)}, below requires-python {minimum}"

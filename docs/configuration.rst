@@ -8,20 +8,19 @@ Generate a documented TOML settings file:
 
 .. code-block:: console
 
-   python -m ommflow.bin.ommflow \
-     --write-default-config protein_md.toml
+   ommflow --write-default-config protein_md.toml
 
 Run with that file:
 
 .. code-block:: console
 
-   python -m ommflow.bin.ommflow --config protein_md.toml
+   ommflow --config protein_md.toml
 
 Explicit CLI values override TOML values:
 
 .. code-block:: console
 
-   python -m ommflow.bin.ommflow \
+   ommflow \
      --config protein_md.toml \
      --production-ns 200
 
@@ -54,8 +53,16 @@ Example
    production_ns = 100.0
    production_report_interval_ns = 1.0
    checkpoint_interval_ns = 0.01
+   performance_interval_ns = 1.0
    integration_fs = 2.0
+   # Hydrogen mass repartitioning. When true, integration_fs defaults to 4.0.
+   hmr = false
    seed = 0
+
+   # GPU floating-point precision: mixed (default), single, or double.
+   # Left commented so the default can fall back on a platform that cannot
+   # honor it; setting it here makes an unsupported precision an error.
+   # precision = "mixed"
 
    # Disabled by default. A single GAFF ligand is selected automatically.
    early_stop = false

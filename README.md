@@ -94,12 +94,15 @@ Run the installed CLI:
 ommflow --help
 ```
 
+Without installing, the same entry point is reachable as
+`python -m ommflow.bin.ommflow`.
+
 ## Quick start
 
 Start a new 100 ns production run using the defaults:
 
 ```bash
-python -m ommflow.bin.ommflow protein.pdb --workdir protein_md
+ommflow protein.pdb --workdir protein_md
 ```
 
 This uses Amber ff19SB, OPC water, 298 K, 1 bar, a 0.1 ns NVT phase followed
@@ -108,7 +111,7 @@ by a 0.1 ns NPT phase, then runs production toward a 100 ns total target.
 Specify a CHARMM36 2024 system:
 
 ```bash
-python -m ommflow.bin.ommflow protein.pdb \
+ommflow protein.pdb \
   --workdir protein_charmm \
   --proteinff charmm36_2024 \
   --waterff tip3p \
@@ -124,20 +127,19 @@ set. It does not use Amber TIP3P parameters.
 Generate a ready-to-edit TOML template:
 
 ```bash
-python -m ommflow.bin.ommflow \
-  --write-default-config protein_md.toml
+ommflow --write-default-config protein_md.toml
 ```
 
 Run with it:
 
 ```bash
-python -m ommflow.bin.ommflow --config protein_md.toml
+ommflow --config protein_md.toml
 ```
 
 Explicit command-line values override TOML values:
 
 ```bash
-python -m ommflow.bin.ommflow \
+ommflow \
   --config protein_md.toml \
   --production-ns 200
 ```
@@ -319,7 +321,7 @@ index, and `ligand-N` numbers the ligand candidates in that same order. List
 them without building or running anything:
 
 ```bash
-python -m ommflow.bin.ommflow complex.dms --list-components
+ommflow complex.dms --list-components
 ```
 
 ```text
@@ -342,7 +344,7 @@ A peptide binder needs no ligand parameterization, so it works from any
 supported input, including `.pdb`:
 
 ```bash
-python -m ommflow.bin.ommflow complex.pdb \
+ommflow complex.pdb \
   --workdir binder_md \
   --early-stop \
   --monitor-chain B
@@ -427,7 +429,7 @@ by a batch scheduler is not mistaken for an unresumable one. An existing
 For a wall-time-limited job, submit the same command again:
 
 ```bash
-python -m ommflow.bin.ommflow protein.pdb \
+ommflow protein.pdb \
   --workdir protein_md \
   --production-ns 200
 ```
@@ -449,7 +451,7 @@ target in `workdir/final.toml` is used. Increase the target with an absolute
 value:
 
 ```bash
-python -m ommflow.bin.ommflow \
+ommflow \
   --workdir protein_md \
   --production-ns 300
 ```
@@ -473,3 +475,7 @@ For early-stop runs, `pocket.json` is restored rather than recomputed;
 `monitor.csv` appends on restart. A confirmed `detached` run does not continue
 automatically under the same early-stop target. Disable `--early-stop` or set
 a larger explicit `--production-ns` target to continue deliberately.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

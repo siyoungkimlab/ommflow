@@ -14,7 +14,7 @@ For a wall-time-limited job, submit the same command again:
 
 .. code-block:: console
 
-   python -m ommflow.bin.ommflow protein.pdb \
+   ommflow protein.pdb \
      --workdir protein_md \
      --production-ns 200
 
@@ -33,7 +33,7 @@ Extend a completed or ongoing target with an absolute value:
 
 .. code-block:: console
 
-   python -m ommflow.bin.ommflow \
+   ommflow \
      --workdir protein_md \
      --production-ns 300
 

@@ -1,7 +1,7 @@
 project = "ommflow"
-copyright = "2026, ommflow contributors"
-author = "ommflow contributors"
-release = "0.1.0"
+copyright = "2026, Siyoung Kim"
+author = "Siyoung Kim"
+release = "0.1.0"  # kept in step with pyproject.toml by the test suite
 
 extensions = []
 templates_path = ["_templates"]

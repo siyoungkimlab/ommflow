@@ -12,6 +12,7 @@ neutralizes the system, equilibrates it, and runs restartable production MD.
 
    getting_started
    configuration
+   cli
    forcefields
    inputs_outputs
    restarts
