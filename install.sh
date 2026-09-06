@@ -2,10 +2,11 @@
 # Install ommflow.
 #
 # Two paths, because the dependency stack is split:
-#   (default)   a conda-forge environment from environment.yml: the full
-#               install, including automatic GAFF ligand parameterization.
-#               This is what you want. The OpenFF packages and AmberTools are
-#               not published to PyPI, so conda is the only way to get them.
+#   (default)   the full install, including automatic GAFF ligand
+#               parameterization. This is what you want. conda supplies the
+#               binary pieces that are not on PyPI (AmberTools, OpenMM) and a
+#               CPU-safe numpy; pip --no-deps then adds the OpenFF stack,
+#               which conda-forge would otherwise burden with PyTorch.
 #   --pip-only  a plain venv from PyPI, for environments without conda at all.
 #               Everything except automatic GAFF ligands, so a DMS or MAE input
 #               carrying a small molecule will not run.
@@ -117,11 +118,38 @@ else
         "$SOLVER" env update -n "$ENV_NAME" -f "$REPO_DIR/environment.yml" --prune
     else
         echo "==> Creating environment '$ENV_NAME' from environment.yml"
-        echo "    Over 200 packages to solve and download."
+        echo "    165 conda packages, then the OpenFF stack from pip."
         "$SOLVER" env create -n "$ENV_NAME" -f "$REPO_DIR/environment.yml"
     fi
     conda activate "$ENV_NAME"
     PYTHON="$(command -v python)"
+
+    # The OpenFF half, installed with pip rather than conda. conda-forge's
+    # openff-toolkit depends on openff-nagl, a neural-network charge model
+    # ommflow never calls, which drags in PyTorch and roughly 80 other
+    # packages. --no-deps takes the OpenFF packages without that subtree, so
+    # their pure-python requirements are listed here explicitly.
+    echo "==> Installing the OpenFF ligand stack"
+    "$PYTHON" -m pip install --quiet --upgrade pip wheel setuptools versioningit
+    "$PYTHON" -m pip install --quiet \
+        networkx cachetools "xmltodict<=1.0.2" python-constraint \
+        "pydantic>=2,<2.12" pint lxml pyyaml tinydb validators rdkit
+
+    # Pinned to the versions conda-forge's own solver selects together, so the
+    # set is known to be mutually consistent, and an upstream commit cannot
+    # change this environment underneath you.
+    GH=https://github.com/openforcefield
+    for package in \
+        "$GH/openff-utilities.git@v0.1.18" \
+        "$GH/openff-units.git@0.4.0" \
+        "$GH/openff-toolkit.git@0.19.0" \
+        "$GH/openff-forcefields.git@2026.01.0" \
+        "$GH/openff-interchange.git@v0.5.4" \
+        "https://github.com/openmm/openmmforcefields.git@0.16.0"
+    do
+        "$PYTHON" -m pip install --quiet --no-deps "git+${package}"
+    done
+
     echo "==> Installing ommflow"
     "$PYTHON" -m pip install -e "$REPO_DIR"
     ACTIVATE="conda activate $ENV_NAME"
@@ -161,20 +189,33 @@ platforms = sorted(
 )
 print(f"  platforms           {', '.join(p.getName() for p in platforms)}")
 
+missing = None
 try:
-    from openff.toolkit.topology import Molecule  # noqa: F401
+    from openff.toolkit.topology import Molecule
     from openmmforcefields.generators import SystemGenerator  # noqa: F401
     from rdkit import Chem  # noqa: F401
 except ImportError as error:
-    print(f"  automatic ligands   NOT available ({error.name} is missing)")
+    missing = error.name
+
+if missing is not None:
+    print(f"  automatic ligands   NOT available ({missing} is missing)")
     print("                      protein and peptide runs are unaffected;")
     print("                      rerun install.sh without --pip-only for GAFF")
+elif not (shutil.which("antechamber") and shutil.which("sqm")):
+    print("  automatic ligands   INCOMPLETE: AmberTools binaries not on PATH")
+    print("                      antechamber and sqm are needed for AM1-BCC")
 else:
-    if shutil.which("antechamber") and shutil.which("sqm"):
+    # Importing is not proof: assign real AM1-BCC charges through sqm, which
+    # is what GAFF parameterization does for every ligand.
+    try:
+        molecule = Molecule.from_smiles("CCO")
+        molecule.generate_conformers(n_conformers=1)
+        molecule.assign_partial_charges("am1bcc")
+        total = sum(float(charge.m) for charge in molecule.partial_charges)
         print("  automatic ligands   available (GAFF 2.11 with AM1-BCC charges)")
-    else:
-        print("  automatic ligands   INCOMPLETE: AmberTools binaries not on PATH")
-        print("                      antechamber and sqm are needed for AM1-BCC")
+        print(f"                      verified on ethanol, net charge {total:+.3f}")
+    except Exception as error:  # noqa: BLE001 - report whatever went wrong
+        print(f"  automatic ligands   BROKEN: AM1-BCC failed ({error})")
 
 if missing:
     sys.exit(1)

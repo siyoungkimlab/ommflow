@@ -29,38 +29,38 @@ The name is optional and defaults to ``ommflow``.
 The standard install
 ~~~~~~~~~~~~~~~~~~~~
 
-``install.sh`` with no arguments builds the conda environment, which is the
-complete installation including automatic GAFF ligand parameterization.
-Equivalently, by hand:
-
 .. code-block:: console
 
-   conda env create -f environment.yml
-   conda activate ommflow
-   python -m pip install -e .
+   bash install.sh
 
-Conda is required because the OpenFF packages (``openff-toolkit``,
-``openff-units``, ``openff-utilities``, ``openff-interchange``) and AmberTools
-are not published to PyPI at all, and ``openmmforcefields`` declares no
-dependencies of its own, so pip cannot assemble a working ligand stack.
+That builds a conda environment, adds the OpenFF stack with pip, installs
+``ommflow``, reports what the environment can do, and runs the tests.
 
-The environment is over 200 packages, because ``openmmforcefields`` pulls in
-``openff-toolkit``, which pulls ``openff-nagl`` and its PyTorch stack. Conda's
-classic solver takes minutes on a dependency graph that size, where the
-libmamba solver takes seconds: measured on one machine with the same specs and
-cached repodata, 277 s against 4 s.
+The dependency stack is split deliberately. conda supplies the pieces that are
+not on PyPI or that must match the machine's CPU: Python, numpy, OpenMM and
+AmberTools. pip then adds the OpenFF packages and RDKit with ``--no-deps``,
+because conda-forge's ``openff-toolkit`` depends on ``openff-nagl``, which
+pulls PyTorch and roughly eighty packages ommflow never uses; GAFF charges come
+from AmberTools AM1-BCC, not from a neural-network model. The split takes the
+environment from 234 packages to 165.
 
-libmamba ships with conda 23.10 and later and is the default there, so usually
-there is nothing to do. ``install.sh`` selects it explicitly in case conda has
-been configured back to the classic solver, and it does not require the
-separate ``mamba`` command. On an older conda:
+``environment.yml`` alone is therefore **not** a complete install. Use
+``install.sh``, or run its pip steps by hand after creating the environment.
 
-.. code-block:: console
+The OpenFF packages are pinned to the versions conda-forge's own solver selects
+together, so the set is known to be mutually consistent and an upstream commit
+cannot change the environment underneath you.
 
-   conda update -n base -c conda-forge conda
+``numpy`` is capped below 2.3 because 2.4 and later are built against an
+x86-64-v2 baseline and abort on older HPC nodes.
 
-Those timings cover the solve only. Downloading and extracting the packages
-takes its own few minutes, which no solver changes.
+The install finishes by assigning real AM1-BCC charges to ethanol through
+``sqm``, so a broken AmberTools is reported at install time rather than on the
+first ligand.
+
+pip reports a dependency conflict naming ``proprep``, ``ndfes``, ``fetkutils``
+and ``edgembar``, which are AmberTools' own bundled tools pinned to
+``numpy<2``. ommflow uses none of them and the install is unaffected.
 
 Without conda
 ~~~~~~~~~~~~~

@@ -1,26 +1,31 @@
-# Full ommflow environment, including automatic GAFF ligand parameterization.
+# The conda half of an ommflow installation: the binary-heavy pieces that are
+# not on PyPI, or that must match the machine's CPU.
 #
-# The OpenFF packages and AmberTools are not published to PyPI, so the ligand
-# stack has to come from conda-forge. Protein-only runs need none of this and
-# install with plain pip; see README.md.
+# This file alone is NOT a complete install. The OpenFF stack is installed
+# afterwards with pip --no-deps, because conda-forge's openff-toolkit drags in
+# openff-nagl and its PyTorch stack, which ommflow never uses -- GAFF charges
+# come from AmberTools AM1-BCC. Splitting it that way takes the environment
+# from 234 packages to 165.
 #
-#   conda env create -f environment.yml
-#   conda activate ommflow
-#   pip install -e .
+# Use install.sh, which does both halves:
+#     bash install.sh
+#
+# Or by hand, then follow the pip steps in README.md:
+#     conda env create -f environment.yml
+#     conda activate ommflow
 name: ommflow
 channels:
   - conda-forge
 dependencies:
   - python >=3.12
-  - numpy >=1.24
+  # numpy 2.4 and later are built against an x86-64-v2 baseline and abort on
+  # older HPC nodes with "NumPy was built with baseline optimizations (X86_V2)
+  # but your machine doesn't support". 2.2.x keeps an SSE3 baseline, and the
+  # cap also satisfies SciPy's and OpenFF's own numpy pins.
+  - numpy <2.3
   # 8.5 is the first release with every force field and water model, complete.
   - openmm >=8.5
-  # Automatic GAFF ligands.
-  - openff-toolkit >=0.14
-  - openff-interchange
-  - openmmforcefields >=0.12
-  - rdkit >=2023.9
-  # antechamber and sqm, for the AM1-BCC charges GAFF needs.
+  # antechamber and sqm, for the AM1-BCC charges GAFF needs. Not on PyPI.
   - ambertools
   # Tests.
   - pytest >=7
