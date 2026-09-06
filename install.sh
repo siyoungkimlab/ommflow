@@ -57,6 +57,13 @@ if [ "$PIP_ONLY" -eq 1 ]; then
     python3 -m venv "$VENV_DIR"
     PYTHON="$VENV_DIR/bin/python"
     "$PYTHON" -m pip install --upgrade --quiet pip
+    # Same cap as environment.yml. numpy 2.4 and later are built against an
+    # x86-64-v2 baseline and abort on older HPC nodes; pyproject.toml leaves
+    # numpy unbounded, because that is the library's requirement rather than
+    # this machine's, so the constraint belongs to the installer. Installing
+    # it first means the editable install below finds it already satisfied.
+    echo "==> Installing a CPU-safe numpy"
+    "$PYTHON" -m pip install --quiet "numpy<2.3"
     echo "==> Installing ommflow (protein-only; no automatic GAFF ligands)"
     "$PYTHON" -m pip install -e "$REPO_DIR[dev]"
     ACTIVATE="source $VENV_DIR/bin/activate"

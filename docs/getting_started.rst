@@ -69,6 +69,12 @@ Without conda
 except automatic GAFF ligands, so a DMS or MAE input carrying a small molecule
 will be rejected. Use it only where conda is unavailable.
 
+It applies the same ``numpy<2.3`` cap as the conda path. ``pyproject.toml``
+leaves numpy unbounded, because that is what the library needs rather than what
+a given machine can run, so the constraint lives in the installer. Installing
+ommflow with bare pip instead of ``install.sh`` therefore takes the newest
+numpy, which aborts on hosts without x86-64-v2.
+
 Run the installed CLI:
 
 .. code-block:: console
