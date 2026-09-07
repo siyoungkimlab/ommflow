@@ -149,7 +149,7 @@ atoms that have since moved.
 
 ``dihedral_restraints.csv`` lists every restrained torsion with its four atom
 indices, atom and residue names, and reference angle in degrees.
-``dihedral_restraint.png`` plots the well against deviation from the reference,
+``dihedral_restraints.png`` plots the well against deviation from the reference,
 alongside the equivalent harmonic.
 
 Platform and precision

@@ -92,7 +92,7 @@ Each work directory contains:
      - Wall-time breakdown per production task
    * - ``dihedral_restraints.csv``
      - Restrained torsions, atom indices and reference angles (only with ``dihedral_restraint``)
-   * - ``dihedral_restraint.png``
+   * - ``dihedral_restraints.png``
      - The restraint potential (only with ``dihedral_restraint``)
    * - ``pocket.json``
      - Immutable early-stop target/pocket selection (only with ``early_stop``)

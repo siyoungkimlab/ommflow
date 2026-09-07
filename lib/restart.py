@@ -81,8 +81,8 @@ class RunPaths:
         return self.workdir / "dihedral_restraints.csv"
 
     @property
-    def dihedral_restraint_png(self) -> Path:
-        return self.workdir / "dihedral_restraint.png"
+    def dihedral_restraints_png(self) -> Path:
+        return self.workdir / "dihedral_restraints.png"
 
     @property
     def performance_csv(self) -> Path:

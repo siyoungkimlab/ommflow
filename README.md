@@ -270,7 +270,7 @@ phi    A         PHE           5           44 66 67 68      C N CA C    -105.923
 psi    A         PHE           5           66 67 68 86      N CA C N    124.452
 ```
 
-`dihedral_restraint.png` plots the well against deviation from the reference,
+`dihedral_restraints.png` plots the well against deviation from the reference,
 with the equivalent harmonic for comparison.
 
 `precision` selects the GPU floating-point precision: `mixed` (the default),
@@ -484,7 +484,7 @@ A new run creates the following inside `workdir`:
 | `pocket.json` | Immutable early-stop target/pocket selection, when enabled |
 | `performance.csv` | Wall-time breakdown per production task |
 | `dihedral_restraints.csv` | Restrained torsions, atom indices and reference angles, when enabled |
-| `dihedral_restraint.png` | The restraint potential, when enabled |
+| `dihedral_restraints.png` | The restraint potential, when enabled |
 | `monitor.csv` | Early-stop measurements and confirmation state, when enabled |
 | `status.json` | Early-stop production outcome, when enabled |
 

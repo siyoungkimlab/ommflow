@@ -22,6 +22,7 @@ from ommflow.lib.ligands import (
     write_components,
 )
 from ommflow.lib.readers import read_structure
+from ommflow.lib.restart import RunPaths
 from ommflow.lib.restraints import (
     add_dihedral_restraints,
     plot_dihedral_restraint,
@@ -202,17 +203,18 @@ def build_solvated_system(
             args.dihedral_restraint_kJ,
         )
         strength = abs(args.dihedral_restraint_kJ)
-        write_dihedral_restraints(output_dir / "dihedral_restraints.csv", records)
-        plotted = plot_dihedral_restraint(
-            output_dir / "dihedral_restraint.png", strength
-        )
+        # RunPaths owns every output name, so a rename cannot drift between
+        # what is written here and what the rest of the workflow looks for.
+        paths = RunPaths(output_dir)
+        write_dihedral_restraints(paths.dihedral_restraints_csv, records)
+        plotted = plot_dihedral_restraint(paths.dihedral_restraints_png, strength)
         print(
             f"Dihedral restraints: {len(records)} backbone torsions over "
             f"{description}, K = {-strength:g} kJ/mol, held at the input geometry."
         )
-        print(f"  atom indices and reference angles: dihedral_restraints.csv")
+        print(f"  atom indices and reference angles: {paths.dihedral_restraints_csv.name}")
         if plotted:
-            print(f"  restraint potential: dihedral_restraint.png")
+            print(f"  restraint potential: {paths.dihedral_restraints_png.name}")
     integrator = mm.LangevinMiddleIntegrator(
         temperature, 1.0 / unit.picosecond, args.integration_fs * unit.femtoseconds
     )
