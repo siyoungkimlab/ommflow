@@ -18,6 +18,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Chemistry",
 ]
 dependencies = [
+    # Plots the dihedral restraint potential. Only the Agg backend is used, so
+    # conda's matplotlib-base satisfies this too.
+    "matplotlib>=3.7",
     "numpy>=1.24",
     # 8.5 is the first release carrying every force field and water model this
     # workflow offers: 8.2 has no amber19, and 8.3/8.4 ship charmm36_2024.xml
@@ -35,6 +38,11 @@ dependencies = [
 ligands = [
     "openmmforcefields>=0.12",
     "rdkit>=2023.9",
+]
+# --dihedral-restraint ss assigns secondary structure with MDTraj. The bb mode
+# and everything else need none of this.
+restraints = [
+    "mdtraj>=1.9",
 ]
 dev = [
     "pytest>=7",

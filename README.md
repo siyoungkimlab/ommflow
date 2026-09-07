@@ -99,7 +99,7 @@ package needs; install OpenMM from conda-forge there instead.
 
 | Component | Needed for | Source |
 |---|---|---|
-| `openmm`, `numpy` | everything | PyPI or conda-forge |
+| `openmm`, `numpy`, `matplotlib` | everything | PyPI or conda-forge |
 | `openmmforcefields`, `rdkit` | automatic ligands | PyPI or conda-forge |
 | `openff-toolkit`, `openff-interchange` | automatic ligands | conda-forge only |
 | AmberTools (`antechamber`, `sqm`) | AM1-BCC charges for GAFF | conda-forge only |
@@ -195,6 +195,8 @@ production_report_interval_ns = 1.0
 checkpoint_interval_ns = 0.01
 integration_fs = 2.0
 hmr = false
+dihedral_restraint = "none"
+dihedral_restraint_kJ = 20.0
 seed = 0
 precision = "mixed"
 performance_interval_ns = 1.0
@@ -221,6 +223,55 @@ explicitly still wins. Rigid water is never repartitioned, for any water model,
 so 3-, 4-, and 5-site models are all unaffected. Repartitioning is a change to
 the dynamics, not just a speed setting: it slows the fastest motions to permit
 the longer step, leaving equilibrium properties intact.
+
+### Backbone dihedral restraints
+
+`dihedral_restraint` holds the protein backbone near the conformation of the
+input structure by restraining every phi and psi to the value it has there:
+
+| Value | Restrains |
+|---|---|
+| `none` | nothing (default) |
+| `bb` | every protein backbone torsion |
+| `ss` | only residues DSSP assigns to a helix or a sheet |
+
+`ss` needs MDTraj, which `environment.yml` installs; `bb` does not. Backbone
+atoms are `N`, `CA` and `C` only. A torsion is created only where the peptide
+bond to the neighbouring residue exists, so termini and chain breaks are left
+free rather than restrained across a gap.
+
+`dihedral_restraint_kJ` is the strength in kJ/mol, 20 by default. Only its
+magnitude is used, so `20` and `-20` both give the correct well. The restraint
+is a six-term Fourier well,
+
+```text
+V(t) = sum over i of K (-1)^i / i! * [1 + cos(i (t - t0 - 180 degrees))]
+```
+
+which is the form engines that express torsions only as cosine series need,
+and maps one-to-one onto OpenMM periodic torsion terms. **The sign matters:**
+`K` is applied as *negative* internally, because a positive `K` puts the
+minimum at `t0 + 180` and would drive the backbone to the opposite
+conformation. At 20 kJ/mol the well is 47 kJ/mol deep with a curvature of
+108.5 kJ/mol/rad², so a 10 degree excursion costs 1.6 kJ/mol and 30 degrees
+costs 12.6.
+
+The restraint is built into `system.xml`, so it applies from minimization
+onward and a restart picks it up without recomputing reference angles from
+atoms that have since moved.
+
+Two files record what was applied. `dihedral_restraints.csv` lists every
+restrained torsion with its four atom indices, atom and residue names, and the
+reference angle in degrees:
+
+```text
+angle  chain_id  residue_name  residue_id  atom_indices     atom_names  reference_degrees
+phi    A         PHE           5           44 66 67 68      C N CA C    -105.923
+psi    A         PHE           5           66 67 68 86      N CA C N    124.452
+```
+
+`dihedral_restraint.png` plots the well against deviation from the reference,
+with the equivalent harmonic for comparison.
 
 `precision` selects the GPU floating-point precision: `mixed` (the default),
 `single`, or `double`. It applies only to platforms that expose a `Precision`
@@ -432,6 +483,8 @@ A new run creates the following inside `workdir`:
 | `components.json` | Covalent-component classifications and parameter provenance |
 | `pocket.json` | Immutable early-stop target/pocket selection, when enabled |
 | `performance.csv` | Wall-time breakdown per production task |
+| `dihedral_restraints.csv` | Restrained torsions, atom indices and reference angles, when enabled |
+| `dihedral_restraint.png` | The restraint potential, when enabled |
 | `monitor.csv` | Early-stop measurements and confirmation state, when enabled |
 | `status.json` | Early-stop production outcome, when enabled |
 

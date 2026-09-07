@@ -90,6 +90,10 @@ Each work directory contains:
      - Covalent-component classification and selected force-field provenance
    * - ``performance.csv``
      - Wall-time breakdown per production task
+   * - ``dihedral_restraints.csv``
+     - Restrained torsions, atom indices and reference angles (only with ``dihedral_restraint``)
+   * - ``dihedral_restraint.png``
+     - The restraint potential (only with ``dihedral_restraint``)
    * - ``pocket.json``
      - Immutable early-stop target/pocket selection (only with ``early_stop``)
    * - ``monitor.csv``

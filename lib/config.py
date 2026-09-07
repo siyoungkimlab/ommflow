@@ -11,6 +11,7 @@ import sys
 import tomllib
 
 from ommflow.lib.platforms import PRECISIONS
+from ommflow.lib.restraints import DIHEDRAL_RESTRAINTS
 from ommflow.lib.forcefields import (
     FORCE_FIELD_FAMILIES,
     WATER_MODELS,
@@ -44,6 +45,8 @@ DEFAULTS = {
     "performance_interval_ns": 1.0,
     "integration_fs": 2.0,
     "hmr": False,
+    "dihedral_restraint": "none",
+    "dihedral_restraint_kJ": 20.0,
     "seed": 0,
     "precision": "mixed",
     "early_stop": False,
@@ -74,6 +77,7 @@ _NUMERIC_KEYS = {
     "checkpoint_interval_ns",
     "performance_interval_ns",
     "integration_fs",
+    "dihedral_restraint_kJ",
     "monitor_interval_ns",
     "pocket_cutoff_nm",
     "contact_cutoff_nm",
@@ -86,6 +90,8 @@ RESTARTABLE_SETTINGS = (
     ("production_ns", "--production-ns"),
     ("integration_fs", "--integration-fs"),
     ("hmr", "--hmr"),
+    ("dihedral_restraint", "--dihedral-restraint"),
+    ("dihedral_restraint_kJ", "--dihedral-restraint-kJ"),
     ("equilibration_ns", "--equilibration-ns"),
     ("equilibration_report_interval_ns", "--equilibration-report-interval-ns"),
     ("production_report_interval_ns", "--production-report-interval-ns"),
@@ -139,6 +145,11 @@ performance_interval_ns = 1.0
 integration_fs = 2.0
 # Hydrogen mass repartitioning. When true, integration_fs defaults to 4.0.
 hmr = false
+
+# Restrain protein backbone phi/psi to the input structure: none, bb, or ss.
+# ss restrains only residues in helices and sheets, and needs MDTraj.
+dihedral_restraint = "none"
+dihedral_restraint_kJ = 20.0
 seed = 0
 
 # GPU floating-point precision: mixed (default), single, or double.
@@ -177,7 +188,7 @@ def load_configuration(path: Path) -> dict:
     for key in ("input_structure", "workdir"):
         if key in configuration and not isinstance(configuration[key], str):
             raise ValueError(f"Configuration setting '{key}' must be a string path.")
-    for key in ("ligand_mode", "ligandff", "precision"):
+    for key in ("ligand_mode", "ligandff", "precision", "dihedral_restraint"):
         if key in configuration and not isinstance(configuration[key], str):
             raise ValueError(f"Configuration setting '{key}' must be a string.")
     for key in MONITOR_TARGET_SELECTORS:
@@ -210,6 +221,7 @@ def load_configuration(path: Path) -> dict:
             "Configuration setting 'confirmation_checks' must be an integer."
         )
     for key in (
+        "dihedral_restraint_kJ",
         "performance_interval_ns",
         "monitor_interval_ns",
         "pocket_cutoff_nm",
@@ -249,6 +261,13 @@ def load_configuration(path: Path) -> dict:
     ):
         raise ValueError(
             "'ligandff' must be one of: " + ", ".join(LIGAND_FORCE_FIELDS)
+        )
+    if (
+        "dihedral_restraint" in configuration
+        and configuration["dihedral_restraint"] not in DIHEDRAL_RESTRAINTS
+    ):
+        raise ValueError(
+            "'dihedral_restraint' must be one of: " + ", ".join(DIHEDRAL_RESTRAINTS)
         )
     if "precision" in configuration and configuration["precision"] not in PRECISIONS:
         raise ValueError("'precision' must be one of: " + ", ".join(PRECISIONS))
@@ -460,6 +479,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="Consecutive detached checks required to stop (default: 2).",
     )
     parser.add_argument(
+        "--dihedral-restraint",
+        choices=DIHEDRAL_RESTRAINTS,
+        default=DEFAULTS["dihedral_restraint"],
+        help=(
+            "Restrain protein backbone phi and psi to the input structure: "
+            "bb for the whole backbone, ss for residues in helices and sheets "
+            "only (needs MDTraj), none to disable (default)."
+        ),
+    )
+    parser.add_argument(
+        "--dihedral-restraint-kJ",
+        dest="dihedral_restraint_kJ",
+        type=float,
+        default=DEFAULTS["dihedral_restraint_kJ"],
+        help="Dihedral restraint strength in kJ/mol (default: 20).",
+    )
+    parser.add_argument(
         "--precision",
         choices=PRECISIONS,
         default=DEFAULTS["precision"],
@@ -612,6 +648,8 @@ def write_final_configuration(args: argparse.Namespace, output_dir: Path) -> Non
         ("performance_interval_ns", str(args.performance_interval_ns)),
         ("integration_fs", str(args.integration_fs)),
         ("hmr", str(args.hmr).lower()),
+        ("dihedral_restraint", toml_string(args.dihedral_restraint)),
+        ("dihedral_restraint_kJ", str(args.dihedral_restraint_kJ)),
         ("seed", str(args.seed)),
         ("precision", toml_string(args.precision)),
         ("early_stop", str(args.early_stop).lower()),

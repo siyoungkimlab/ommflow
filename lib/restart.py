@@ -77,6 +77,14 @@ class RunPaths:
         return self.workdir / "pocket.json"
 
     @property
+    def dihedral_restraints_csv(self) -> Path:
+        return self.workdir / "dihedral_restraints.csv"
+
+    @property
+    def dihedral_restraint_png(self) -> Path:
+        return self.workdir / "dihedral_restraint.png"
+
+    @property
     def performance_csv(self) -> Path:
         return self.workdir / "performance.csv"
 

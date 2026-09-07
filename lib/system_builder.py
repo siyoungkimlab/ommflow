@@ -22,6 +22,11 @@ from ommflow.lib.ligands import (
     write_components,
 )
 from ommflow.lib.readers import read_structure
+from ommflow.lib.restraints import (
+    add_dihedral_restraints,
+    plot_dihedral_restraint,
+    write_dihedral_restraints,
+)
 
 
 def _report_repartitioned_masses(topology: app.Topology, system: mm.System) -> None:
@@ -186,6 +191,28 @@ def build_solvated_system(
     )
     if args.hmr:
         _report_repartitioned_masses(modeller.topology, system)
+    if args.dihedral_restraint != "none":
+        # Added to the System, so it is serialized into system.xml and a restart
+        # picks it up without recomputing reference angles from moved atoms.
+        records, description = add_dihedral_restraints(
+            system,
+            modeller.topology,
+            modeller.positions,
+            args.dihedral_restraint,
+            args.dihedral_restraint_kJ,
+        )
+        strength = abs(args.dihedral_restraint_kJ)
+        write_dihedral_restraints(output_dir / "dihedral_restraints.csv", records)
+        plotted = plot_dihedral_restraint(
+            output_dir / "dihedral_restraint.png", strength
+        )
+        print(
+            f"Dihedral restraints: {len(records)} backbone torsions over "
+            f"{description}, K = {-strength:g} kJ/mol, held at the input geometry."
+        )
+        print(f"  atom indices and reference angles: dihedral_restraints.csv")
+        if plotted:
+            print(f"  restraint potential: dihedral_restraint.png")
     integrator = mm.LangevinMiddleIntegrator(
         temperature, 1.0 / unit.picosecond, args.integration_fs * unit.femtoseconds
     )

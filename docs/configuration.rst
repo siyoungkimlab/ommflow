@@ -113,6 +113,45 @@ in ns/day, and the share of wall time spent outside integration. A summary of
 the same breakdown prints when production ends. Timings cover the current
 submission only and restart at zero on a resume.
 
+Backbone dihedral restraints
+----------------------------
+
+``dihedral_restraint`` / ``--dihedral-restraint`` holds the protein backbone
+near the conformation of the input structure, restraining every phi and psi to
+the value it has there. ``bb`` covers every protein backbone torsion, ``ss``
+only the residues DSSP assigns to a helix or a sheet, and ``none`` disables it.
+``ss`` assigns structure with MDTraj, which ``environment.yml`` installs; ``bb``
+needs nothing extra.
+
+Backbone atoms are ``N``, ``CA`` and ``C`` only. A torsion is created only where
+the peptide bond to the neighbouring residue exists, so termini and chain
+breaks are left free rather than restrained across a gap.
+
+``dihedral_restraint_kJ`` / ``--dihedral-restraint-kJ`` is the strength in
+kJ/mol, 20 by default. Only its magnitude is used, so ``20`` and ``-20`` both
+give the correct well. The restraint is a
+six-term Fourier well,
+
+.. code-block:: text
+
+   V(t) = sum over i of K (-1)^i / i! * [1 + cos(i (t - t0 - 180 degrees))]
+
+which is the form engines that express torsions only as cosine series need, and
+maps one-to-one onto OpenMM periodic torsion terms. The sign matters: ``K`` is
+applied as negative internally, because a positive ``K`` places the minimum at
+``t0 + 180`` and would drive the backbone to the opposite conformation. At
+20 kJ/mol the well is 47 kJ/mol deep with a curvature of 108.5 kJ/mol/rad², so
+a 10 degree excursion costs 1.6 kJ/mol and 30 degrees costs 12.6.
+
+The restraint is built into ``system.xml``, so it applies from minimization
+onward and a restart picks it up without recomputing reference angles from
+atoms that have since moved.
+
+``dihedral_restraints.csv`` lists every restrained torsion with its four atom
+indices, atom and residue names, and reference angle in degrees.
+``dihedral_restraint.png`` plots the well against deviation from the reference,
+alongside the equivalent harmonic.
+
 Platform and precision
 ----------------------
 

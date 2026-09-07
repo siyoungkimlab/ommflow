@@ -27,5 +27,9 @@ dependencies:
   - openmm >=8.5
   # antechamber and sqm, for the AM1-BCC charges GAFF needs. Not on PyPI.
   - ambertools
+  # Plots the dihedral restraint potential; only the Agg backend is used.
+  - matplotlib-base >=3.7
+  # Secondary structure assignment for --dihedral-restraint ss.
+  - mdtraj >=1.9
   # Tests.
   - pytest >=7

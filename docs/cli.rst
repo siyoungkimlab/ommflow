@@ -110,6 +110,12 @@ when resuming an existing ``--workdir``.
    * - ``--confirmation-checks``
      - ``2``
      - Consecutive detached checks required to stop (default: 2).
+   * - ``--dihedral-restraint``
+     - ``none``
+     - Restrain protein backbone phi and psi to the input structure: bb for the whole backbone, ss for residues in helices and sheets only (needs MDTraj), none to disable (default).
+   * - ``--dihedral-restraint-kJ``
+     - ``20.0``
+     - Dihedral restraint strength in kJ/mol (default: 20).
    * - ``--precision``
      - ``mixed``
      - GPU floating-point precision (default: mixed). Applies only to platforms that expose it; a platform that cannot honor the default falls back to its own precision with a warning.
