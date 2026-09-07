@@ -490,3 +490,56 @@ def test_components_classify_without_any_formal_charge_data() -> None:
     assert component.formal_charge_complete is False
     assert component.net_known_formal_charge is None
     assert component.known_formal_charge_sum == 0
+
+
+def _mae_block(rows: str, natoms: int) -> str:
+    """A minimal MAE m_atom/m_bond pair in Maestro's real layout."""
+    return f"""f_m_ct {{
+ s_m_title
+:::
+ test
+ m_atom[{natoms}] {{
+ i_m_residue_number
+ s_m_chain_name
+ s_m_pdb_residue_name
+ s_m_pdb_atom_name
+ i_m_atomic_number
+ i_m_formal_charge
+ r_m_x_coord
+ r_m_y_coord
+ r_m_z_coord
+:::
+{rows}:::
+ }}
+ m_bond[1] {{
+ i_m_from
+ i_m_to
+ i_m_order
+:::
+ 1 1 2 1
+:::
+ }}
+}}
+"""
+
+
+def test_mae_tables_ignore_the_closing_separator(tmp_path: Path) -> None:
+    """A block is "headers ::: rows :::"; the trailing one is not data."""
+    from ommflow.lib.readers import MAEReader
+
+    rows = (
+        ' 1 1 A "ALA " " N  " 7 0 1.0 2.0 3.0\n'
+        ' 2 1 A "ALA " " CA " 6 0 4.0 5.0 6.0\n'
+    )
+    path = tmp_path / "two.mae"
+    path.write_text(_mae_block(rows, 2), encoding="utf-8")
+
+    structure = MAEReader(path)
+    atoms = list(structure.topology.atoms())
+    assert len(atoms) == 2
+    # Padding is a PDB column artifact, not part of the name; leaving it in
+    # would stop every force-field template from matching.
+    assert [atom.name for atom in atoms] == ["N", "CA"]
+    assert [atom.residue.name for atom in atoms] == ["ALA", "ALA"]
+    assert atoms[0].residue.chain.id == "A"
+    assert structure.topology.getNumBonds() == 1

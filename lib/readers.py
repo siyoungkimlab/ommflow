@@ -346,12 +346,15 @@ class MAEReader(StructureData):
         )
         if match is None:
             raise ValueError(f"MAE file does not contain a {table_name} table.")
-        try:
-            headers, rows = match.group(1).split(":::", maxsplit=1)
-        except ValueError as error:
+        # A block is "headers ::: rows :::", so the closing separator has to be
+        # dropped as well; leaving it in adds one stray token and makes every
+        # row-length check fail.
+        sections = match.group(1).split(":::")
+        if len(sections) < 2:
             raise ValueError(
                 f"MAE {table_name} table is missing its ::: separator."
-            ) from error
+            )
+        headers, rows = sections[0], sections[1]
         columns = cls._token_pattern.findall(headers)
         values = cls._token_pattern.findall(rows)
         if not columns:
@@ -380,7 +383,15 @@ class MAEReader(StructureData):
 
     @staticmethod
     def _parse_value(value: str) -> str:
-        return ast.literal_eval(value) if value.startswith('"') else value
+        """Unquote a MAE value, dropping the PDB column padding it carries.
+
+        Names arrive padded to their PDB field width, so a residue reads as
+        "GLU " and an atom as " N  ". Those spaces are formatting, not part of
+        the name, and would stop any force-field template from matching.
+        """
+        if not value.startswith('"'):
+            return value
+        return ast.literal_eval(value).strip()
 
     @staticmethod
     def _chemical_value(value: str) -> int | float | str:
