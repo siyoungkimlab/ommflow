@@ -6,6 +6,7 @@ import csv
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from openmm import app, unit
 
 from ommflow.lib.performance import (
@@ -106,3 +107,46 @@ def test_hydrogen_mass_repartitioning_never_touches_water() -> None:
             system.isVirtualSite(index)
             for index in range(system.getNumParticles())
         )
+
+
+class _Clock:
+    """A Simulation stand-in whose reported time carries realistic drift."""
+
+    def __init__(self, picoseconds: float) -> None:
+        self._picoseconds = picoseconds
+
+    class _State:
+        def __init__(self, picoseconds: float) -> None:
+            self._picoseconds = picoseconds
+
+        def getTime(self):  # noqa: N802 - OpenMM's interface
+            return self._picoseconds * unit.picoseconds
+
+    @property
+    def context(self):
+        clock = self
+
+        class _Context:
+            def getState(self, *args, **kwargs):  # noqa: N802 - OpenMM's interface
+                return _Clock._State(clock._picoseconds)
+
+        return _Context()
+
+
+def test_step_count_survives_the_clock_drifting_over_a_long_run() -> None:
+    """OpenMM adds the timestep once per step, so its clock loses exactness."""
+    from ommflow.lib.simulation import _current_steps
+
+    timestep = 0.002 * unit.picoseconds
+
+    # Measured drift: about -2.5e-6 steps at 400k and -7.3e-6 at 600k. A 10 ns
+    # run at 2 fs is 5 million steps, where it is larger still. All of these
+    # used to raise "Checkpoint time is not an exact multiple of the timestep".
+    for steps, drift in ((400_000, -2.5e-6), (600_000, -7.3e-6), (5_000_000, -6e-5)):
+        picoseconds = (steps + drift) * 0.002
+        assert _current_steps(_Clock(picoseconds), timestep) == steps
+
+    # A genuinely mismatched timestep is still caught. A clock at 1000 ps read
+    # with a 3 fs step is 333333.33 steps, which no drift could explain.
+    with pytest.raises(ValueError, match="not a multiple of the timestep"):
+        _current_steps(_Clock(1000.0), 0.003 * unit.picoseconds)

@@ -170,10 +170,11 @@ def run_production(
         )
         if monitor is None:
             simulation.step(production_steps)
+            current_steps += production_steps
         else:
             if monitor_steps is None:
                 raise AssertionError("An enabled monitor must have an interval.")
-            detached, consecutive_count = _run_monitored_production(
+            detached, consecutive_count, current_steps = _run_monitored_production(
                 simulation,
                 monitor,
                 args,
@@ -190,7 +191,7 @@ def run_production(
         print(tracker.summary())
     state = simulation.context.getState(getPositions=True)
     _write_positions(modeller.topology, state.getPositions(), paths.final_pdb)
-    final_steps = _current_steps(simulation, timestep)
+    final_steps = current_steps
     final_time_ns = state.getTime().value_in_unit(unit.nanoseconds)
     if monitor is not None:
         simulation.saveCheckpoint(str(paths.checkpoint))
@@ -221,13 +222,31 @@ def run_production(
         )
 
 
+# OpenMM advances its clock by adding the timestep once per step, so the time
+# it reports drifts from an exact multiple by roughly one part in 1e9 per step:
+# about 2.5e-6 steps after 400 thousand, and 7e-6 after 600 thousand. A
+# tolerance tight enough to be meaningful for a genuinely mismatched timestep,
+# which is off by whole steps or more, still has to be loose enough to survive
+# that drift over a long run.
+_STEP_COUNT_TOLERANCE = 0.01
+
+
 def _current_steps(simulation: app.Simulation, timestep) -> int:
-    """Return context time as an exact production integration-step count."""
+    """Convert the context clock into a production integration-step count.
+
+    Only used once per submission, to learn where a restored checkpoint sits.
+    After that the count is carried as an integer, because re-deriving it from
+    the clock accumulates the drift described above.
+    """
     current_time = simulation.context.getState().getTime()
     current_steps_raw = current_time / timestep
     current_steps = round(current_steps_raw)
-    if abs(current_steps_raw - current_steps) > 1e-6:
-        raise ValueError("Checkpoint time is not an exact multiple of the timestep.")
+    if abs(current_steps_raw - current_steps) > _STEP_COUNT_TOLERANCE:
+        raise ValueError(
+            f"Checkpoint time {current_time} is not a multiple of the timestep "
+            f"{timestep}; it is {current_steps_raw:g} steps. The checkpoint was "
+            "probably written with a different --integration-fs."
+        )
     return current_steps
 
 
@@ -241,16 +260,17 @@ def _run_monitored_production(
     monitor_steps: int,
     consecutive_count: int,
     tracker: PerformanceTracker,
-) -> tuple[bool, int]:
+) -> tuple[bool, int, int]:
     """Step precisely to monitor points, checkpointing before each CSV row."""
-    timestep = simulation.integrator.getStepSize()
     while current_steps < production_target_steps:
         next_monitor_step = (current_steps // monitor_steps + 1) * monitor_steps
         step_count = min(
             next_monitor_step - current_steps, production_target_steps - current_steps
         )
         simulation.step(step_count)
-        current_steps = _current_steps(simulation, timestep)
+        # Incremented rather than re-derived from the clock: exact, and immune
+        # to the drift that made a long run fail at a monitor point.
+        current_steps += step_count
         if current_steps % monitor_steps:
             continue
         state = simulation.context.getState(getPositions=True)
@@ -290,7 +310,7 @@ def _run_monitored_production(
             },
         )
         if confirmed and current_steps < production_target_steps:
-            return True, consecutive_count
+            return True, consecutive_count, current_steps
         write_status(
             paths.status_json,
             monitor_status(
@@ -302,7 +322,7 @@ def _run_monitored_production(
                 consecutive_count,
             ),
         )
-    return False, consecutive_count
+    return False, consecutive_count, current_steps
 
 
 def _status_target(status: dict[str, object] | None) -> float | None:
