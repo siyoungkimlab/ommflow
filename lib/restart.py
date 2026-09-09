@@ -29,6 +29,10 @@ class RunPaths:
         return self.workdir / "solvated.pdb"
 
     @property
+    def solvated_mae(self) -> Path:
+        return self.workdir / "solvated.mae"
+
+    @property
     def components_json(self) -> Path:
         return self.workdir / "components.json"
 
@@ -53,8 +57,16 @@ class RunPaths:
         return self.workdir / "equilibrated.pdb"
 
     @property
+    def equilibrated_mae(self) -> Path:
+        return self.workdir / "equilibrated.mae"
+
+    @property
     def final_pdb(self) -> Path:
         return self.workdir / "final.pdb"
+
+    @property
+    def final_mae(self) -> Path:
+        return self.workdir / "final.mae"
 
     @property
     def equilibration_dcd(self) -> Path:

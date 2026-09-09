@@ -58,6 +58,24 @@ class StructureData:
         return tuple(bond.order for bond in self.bond_metadata)
 
 
+def _topology_bond_order(order: object | None) -> int | None:
+    """Reduce a source bond order to the integer an OpenMM bond can carry.
+
+    Kekule orders pass through unchanged, so a MAE or DMS input keeps the
+    double and triple bonds it was written with. An aromatic order has no
+    integer form and is recorded as single: this value is only ever drawn by a
+    writer, while ligand parameterization reads the unreduced order from the
+    bond metadata.
+    """
+    if order is None:
+        return None
+    try:
+        number = float(order)
+    except (TypeError, ValueError):
+        return 1
+    return int(number) if number.is_integer() else 1
+
+
 def _structure_data(
     topology: app.Topology,
     positions,
@@ -213,7 +231,11 @@ class DMSReader(StructureData):
                 f"SELECT p0, p1, {order_select} FROM bond"
             ):
                 try:
-                    topology.addBond(atoms[atom1], atoms[atom2])
+                    topology.addBond(
+                        atoms[atom1],
+                        atoms[atom2],
+                        order=_topology_bond_order(order),
+                    )
                 except KeyError as error:
                     raise ValueError(
                         f"DMS bond references unknown particle ID: {error.args[0]}"
@@ -309,19 +331,22 @@ class MAEReader(StructureData):
             )
         for row in bond_rows:
             values = dict(zip(bond_columns, row, strict=True))
+            order = (
+                self._chemical_value(values[bond_order_column])
+                if bond_order_column
+                else None
+            )
             try:
                 topology.addBond(
-                    atoms[int(values["i_m_from"])], atoms[int(values["i_m_to"])]
+                    atoms[int(values["i_m_from"])],
+                    atoms[int(values["i_m_to"])],
+                    order=_topology_bond_order(order),
                 )
             except KeyError as error:
                 raise ValueError(
                     f"MAE bond references unknown atom index: {error.args[0]}"
                 ) from error
-            bond_orders.append(
-                self._chemical_value(values[bond_order_column])
-                if bond_order_column
-                else None
-            )
+            bond_orders.append(order)
         data = _structure_data(
             topology,
             positions * unit.angstrom,

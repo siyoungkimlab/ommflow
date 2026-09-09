@@ -48,6 +48,7 @@ from ommflow.lib.restart import (
     save_new_configuration,
 )
 from ommflow.lib.system_builder import build_solvated_system
+from ommflow.lib.writers import write_mae
 
 
 def _simulation(
@@ -104,6 +105,16 @@ def run_equilibration(
     simulation.reporters.clear()
     equilibrated_state = simulation.context.getState(getPositions=True)
     _write_positions(modeller.topology, equilibrated_state.getPositions(), paths.equilibrated_pdb)
+    # The production trajectory starts from these coordinates, so this is the
+    # structure to load it against; the box comes from the state because NPT
+    # has resized the one the topology was solvated with.
+    write_mae(
+        paths.equilibrated_mae,
+        modeller.topology,
+        equilibrated_state.getPositions(),
+        title="equilibrated",
+        box_vectors=equilibrated_state.getPeriodicBoxVectors(),
+    )
     simulation.context.setTime(0 * unit.picoseconds)
     # Production reporting counts from the first production step, so state.csv
     # steps line up with monitor.csv instead of carrying an equilibration offset.
@@ -191,6 +202,15 @@ def run_production(
         print(tracker.summary())
     state = simulation.context.getState(getPositions=True)
     _write_positions(modeller.topology, state.getPositions(), paths.final_pdb)
+    # Rewritten at the end of every segment, so the box tracks the barostat
+    # rather than the one production started from.
+    write_mae(
+        paths.final_mae,
+        modeller.topology,
+        state.getPositions(),
+        title="final",
+        box_vectors=state.getPeriodicBoxVectors(),
+    )
     final_steps = current_steps
     final_time_ns = state.getTime().value_in_unit(unit.nanoseconds)
     if monitor is not None:
