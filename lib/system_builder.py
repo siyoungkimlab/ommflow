@@ -28,6 +28,7 @@ from ommflow.lib.restraints import (
     plot_dihedral_restraint,
     write_dihedral_restraints,
 )
+from ommflow.lib.writers import write_mae
 
 
 def _report_repartitioned_masses(topology: app.Topology, system: mm.System) -> None:
@@ -178,6 +179,15 @@ def build_solvated_system(
         app.PDBFile.writeFile(
             modeller.topology, modeller.positions, handle, keepIds=True
         )
+    # RunPaths owns every output name, so a rename cannot drift between what is
+    # written here and what the rest of the workflow looks for.
+    paths = RunPaths(output_dir)
+    write_mae(
+        paths.solvated_mae,
+        modeller.topology,
+        modeller.positions,
+        title="solvated",
+    )
 
     temperature = args.temperature * unit.kelvin
     pressure = args.pressure * unit.bar
@@ -203,9 +213,6 @@ def build_solvated_system(
             args.dihedral_restraint_kJ,
         )
         strength = abs(args.dihedral_restraint_kJ)
-        # RunPaths owns every output name, so a rename cannot drift between
-        # what is written here and what the rest of the workflow looks for.
-        paths = RunPaths(output_dir)
         write_dihedral_restraints(paths.dihedral_restraints_csv, records)
         plotted = plot_dihedral_restraint(paths.dihedral_restraints_png, strength)
         print(

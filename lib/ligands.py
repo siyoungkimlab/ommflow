@@ -784,8 +784,15 @@ def _modeller_with_ligand_residues(
             )
             position_order.append(source_atom_index)
 
-    for source_atom1, source_atom2 in structure.topology.bonds():
-        topology.addBond(atom_map[source_atom1.index], atom_map[source_atom2.index])
+    for bond in structure.topology.bonds():
+        # Carry the order across: it is what lets the written MAE show the
+        # input's double and triple bonds instead of a flat single-bond graph.
+        topology.addBond(
+            atom_map[bond[0].index],
+            atom_map[bond[1].index],
+            bond.type,
+            bond.order,
+        )
     positions = _reordered_positions(structure.positions, position_order)
     return app.Modeller(topology, positions), tuple(position_order)
 

@@ -470,12 +470,15 @@ A new run creates the following inside `workdir`:
 |---|---|
 | `input.<extension>` | Original supplied structure |
 | `solvated.pdb` | Solvated and neutralized system |
+| `solvated.mae` | The same system with bonds and box, to view `equilibration.dcd` against |
 | `equilibration.dcd` | NVT and NPT equilibration trajectory |
 | `equilibration.csv` | Equilibration state data |
 | `equilibrated.pdb` | Final NPT-equilibrated coordinates |
+| `equilibrated.mae` | The same coordinates with bonds and box, to view `trajectory.dcd` against |
 | `trajectory.dcd` | Production trajectory |
 | `state.csv` | Production state data; step and time both start at 0 |
 | `final.pdb` | Latest production coordinates |
+| `final.mae` | The same coordinates with bonds and box |
 | `checkpoint.chk` | Current production OpenMM checkpoint |
 | `system.xml` | Production OpenMM system definition |
 | `integrator.xml` | Production integrator definition |
