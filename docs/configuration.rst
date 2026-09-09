@@ -132,16 +132,18 @@ kJ/mol, 20 by default. Only its magnitude is used, so ``20`` and ``-20`` both
 give the correct well. The restraint is a
 six-term Fourier well,
 
-.. code-block:: text
+.. math::
 
-   V(t) = sum over i of K (-1)^i / i! * [1 + cos(i (t - t0 - 180 degrees))]
+   V(\theta) = \sum_{i=1}^{6} \frac{K\,(-1)^{i}}{i!}
+                \left[\, 1 + \cos\!\bigl(i\,(\theta - \theta_{0} - \pi)\bigr) \right]
 
 which is the form engines that express torsions only as cosine series need, and
-maps one-to-one onto OpenMM periodic torsion terms. The sign matters: ``K`` is
-applied as negative internally, because a positive ``K`` places the minimum at
-``t0 + 180`` and would drive the backbone to the opposite conformation. At
-20 kJ/mol the well is 47 kJ/mol deep with a curvature of 108.5 kJ/mol/rad², so
-a 10 degree excursion costs 1.6 kJ/mol and 30 degrees costs 12.6.
+maps one-to-one onto OpenMM periodic torsion terms, each with periodicity
+:math:`i` and phase :math:`i(\theta_{0} + \pi)`:
+
+.. math::
+
+   E = k \left[\, 1 + \cos(n\theta - \phi) \right]
 
 The restraint is built into ``system.xml``, so it applies from minimization
 onward and a restart picks it up without recomputing reference angles from
