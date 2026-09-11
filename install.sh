@@ -12,24 +12,39 @@
 #               carrying a small molecule will not run.
 #
 # Usage:
-#   bash install.sh [NAME] [--pip-only]
+#   bash install.sh [NAME] [--pip-only] [--cuda VERSION]
 #
 # NAME defaults to "ommflow". It names the conda environment, or the venv
 # directory under --pip-only.
+#
+# --cuda VERSION installs OpenMM built for one CUDA release, such as 12: the
+# same choice as OpenMM's own "cuda-version=12" (conda) and "openmm[cuda12]"
+# (pip). The driver on the GPU nodes that will run ommflow must support the
+# CUDA that gets installed. Without it, conda picks a release from the driver
+# on the machine running the install, or the newest release when there is
+# none, and GPU nodes with an older driver then fail with
+# CUDA_ERROR_UNSUPPORTED_PTX_VERSION. It is off by default, so installs on
+# machines without an NVIDIA GPU are unchanged. pip only selects the major
+# release.
 #
 #   bash install.sh                  # conda env "ommflow"
 #   bash install.sh myenv            # conda env "myenv"
 #   bash install.sh --pip-only       # venv in ./ommflow
 #   bash install.sh myenv --pip-only # venv in ./myenv
+#   bash install.sh --cuda 12        # conda env "ommflow", OpenMM for CUDA 12
 set -euo pipefail
 
 ENV_NAME=""
 PIP_ONLY=0
+CUDA=""
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --pip-only) PIP_ONLY=1; shift ;;
+        --cuda)     [ $# -ge 2 ] || { echo "--cuda needs a version, e.g. --cuda 12" >&2; exit 2; }
+                    CUDA="$2"; shift 2 ;;
+        --cuda=*)   CUDA="${1#--cuda=}"; shift ;;
         -h|--help)  awk 'NR>1 && /^#/ {sub(/^# ?/, ""); print; next} NR>1 {exit}' \
                         "${BASH_SOURCE[0]}"; exit 0 ;;
         -*) echo "Unknown option: $1 (try --help)" >&2; exit 2 ;;
@@ -43,27 +58,41 @@ while [ $# -gt 0 ]; do
 done
 ENV_NAME="${ENV_NAME:-ommflow}"
 VENV_DIR="$ENV_NAME"
+if [ -n "$CUDA" ] && ! [[ "$CUDA" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+    echo "--cuda takes a CUDA release such as 12 or 13, not '$CUDA'." >&2
+    exit 2
+fi
 
 # ----------------------------------------------------------------------
 # 1. Create the environment and install ommflow into it.
 # ----------------------------------------------------------------------
 if [ "$PIP_ONLY" -eq 1 ]; then
-    # requires-python is >=3.12; check before creating a venv pip would reject.
-    python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)' || {
-        echo "Python 3.12 or later is required; found $(python3 -V 2>&1)." >&2
+    # requires-python is >=3.12, and the numpy<2 pinned below has no wheels for
+    # 3.13 or later, so only 3.12 works; check before creating the venv.
+    python3 -c 'import sys; sys.exit(0 if sys.version_info[:2] == (3, 12) else 1)' || {
+        echo "Python 3.12 is required (numpy<2 has no wheels for 3.13+); found $(python3 -V 2>&1)." >&2
         exit 1
     }
     echo "==> Creating venv at $VENV_DIR"
     python3 -m venv "$VENV_DIR"
     PYTHON="$VENV_DIR/bin/python"
     "$PYTHON" -m pip install --upgrade --quiet pip
-    # Same cap as environment.yml. numpy 2.4 and later are built against an
+    # Same pin as environment.yml. numpy 2.4 and later are built against an
     # x86-64-v2 baseline and abort on older HPC nodes; pyproject.toml leaves
     # numpy unbounded, because that is the library's requirement rather than
     # this machine's, so the constraint belongs to the installer. Installing
     # it first means the editable install below finds it already satisfied.
     echo "==> Installing a CPU-safe numpy"
-    "$PYTHON" -m pip install --quiet "numpy<2.3"
+    "$PYTHON" -m pip install --quiet "numpy<2"
+    if [ -n "$CUDA" ]; then
+        # PyPI ships the CUDA platform as one extra per major release, so a
+        # minor release cannot be pinned here the way conda pins it.
+        echo "==> Installing OpenMM with CUDA ${CUDA%%.*} support"
+        if [ "$CUDA" != "${CUDA%%.*}" ]; then
+            echo "    pip selects CUDA by major release only; $CUDA is not enforced"
+        fi
+        "$PYTHON" -m pip install --quiet "openmm[cuda${CUDA%%.*}]>=8.5"
+    fi
     echo "==> Installing ommflow (protein-only; no automatic GAFF ligands)"
     "$PYTHON" -m pip install -e "$REPO_DIR[dev]"
     ACTIVATE="source $VENV_DIR/bin/activate"
@@ -120,13 +149,29 @@ else
         echo
     fi
 
+    ENV_FILE="$REPO_DIR/environment.yml"
+    if [ -n "$CUDA" ]; then
+        # Pinning cuda-version selects OpenMM's build for that CUDA release.
+        # CONDA_OVERRIDE_CUDA stands in for the driver conda would otherwise
+        # detect, so a login node without a GPU, or with a newer driver than
+        # the compute nodes, can still install for the compute nodes. conda
+        # recognizes an environment file by its extension, hence a directory.
+        ENV_DIR="$(mktemp -d)"
+        trap 'rm -rf "$ENV_DIR"' EXIT
+        ENV_FILE="$ENV_DIR/environment.yml"
+        awk -v pin="  - cuda-version=$CUDA" '{ print } /^dependencies:/ { print pin }' \
+            "$REPO_DIR/environment.yml" >"$ENV_FILE"
+        export CONDA_OVERRIDE_CUDA="$CUDA"
+        echo "==> Pinning OpenMM to CUDA $CUDA"
+    fi
+
     if conda env list | awk '{print $1}' | grep -qx "$ENV_NAME"; then
         echo "==> Updating existing environment '$ENV_NAME' (this can take several minutes)"
-        "$SOLVER" env update -n "$ENV_NAME" -f "$REPO_DIR/environment.yml" --prune
+        "$SOLVER" env update -n "$ENV_NAME" -f "$ENV_FILE" --prune
     else
         echo "==> Creating environment '$ENV_NAME' from environment.yml"
         echo "    165 conda packages, then the OpenFF stack from pip."
-        "$SOLVER" env create -n "$ENV_NAME" -f "$REPO_DIR/environment.yml"
+        "$SOLVER" env create -n "$ENV_NAME" -f "$ENV_FILE"
     fi
     conda activate "$ENV_NAME"
     PYTHON="$(command -v python)"
@@ -169,7 +214,8 @@ fi
 # ----------------------------------------------------------------------
 echo
 echo "==> Verifying"
-"$PYTHON" - <<'PY'
+OMMFLOW_CUDA="$CUDA" "$PYTHON" - <<'PY'
+import os
 import shutil
 import sys
 
@@ -195,6 +241,19 @@ platforms = sorted(
     reverse=True,
 )
 print(f"  platforms           {', '.join(p.getName() for p in platforms)}")
+
+cuda_release = os.environ.get("OMMFLOW_CUDA")
+if cuda_release:
+    print(f"  cuda                pinned to {cuda_release}")
+    if "CUDA" not in {platform.getName() for platform in platforms}:
+        # The CUDA plugin needs the NVIDIA driver to load, so this is expected
+        # on a login node without a GPU and is not treated as a failure.
+        print("  !! CUDA platform    did not load on this machine:")
+        for failure in openmm.Platform.getPluginLoadFailures():
+            if "cuda" in failure.lower():
+                print(f"                      {failure}")
+        print("                      expected without an NVIDIA driver; confirm on")
+        print("                      a GPU node with: python -m openmm.testInstallation")
 
 missing = None
 try:

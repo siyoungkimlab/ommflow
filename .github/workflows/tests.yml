@@ -21,7 +21,8 @@ jobs:
         # wheels need glibc >= 2.34, which ubuntu-latest provides; older
         # enterprise Linux has to install OpenMM from conda-forge instead.
         os: [ubuntu-latest, macos-latest]
-        python-version: ["3.12", "3.13"]
+        # install.sh pins numpy<2, which has no builds for 3.13 or later.
+        python-version: ["3.12"]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -31,6 +32,8 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
+          # The same numpy pin install.sh applies, so CI tests what users get.
+          python -m pip install "numpy<2"
           python -m pip install -e '.[dev]'
       - name: Report the environment under test
         run: |

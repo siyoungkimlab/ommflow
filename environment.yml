@@ -17,12 +17,13 @@ name: ommflow
 channels:
   - conda-forge
 dependencies:
-  - python >=3.12
+  # numpy 1.x has no builds for Python 3.13 or later.
+  - python >=3.12,<3.13
   # numpy 2.4 and later are built against an x86-64-v2 baseline and abort on
   # older HPC nodes with "NumPy was built with baseline optimizations (X86_V2)
-  # but your machine doesn't support". 2.2.x keeps an SSE3 baseline, and the
-  # cap also satisfies SciPy's and OpenFF's own numpy pins.
-  - numpy <2.3
+  # but your machine doesn't support", and AmberTools' bundled tools (proprep,
+  # ndfes, fetkutils, edgembar) pin numpy<2 themselves.
+  - numpy <2
   # 8.5 is the first release with every force field and water model, complete.
   - openmm >=8.5
   # antechamber and sqm, for the AM1-BCC charges GAFF needs. Not on PyPI.

@@ -4,7 +4,8 @@ Getting started
 Requirements
 ------------
 
-* Python 3.12 or later.
+* Python 3.12, since ``install.sh`` pins numpy below 2, which has no builds
+  for 3.13 or later.
 * OpenMM 8.5 or later, with the required execution platform support: CPU,
   CUDA, OpenCL, or Metal.
 
@@ -23,6 +24,7 @@ what that environment can do, and runs the tests:
    bash install.sh                   # conda env "ommflow", with automatic ligands
    bash install.sh myenv             # same, under another name
    bash install.sh --pip-only        # venv in ./ommflow, protein and peptide only
+   bash install.sh --cuda 12         # conda env "ommflow", OpenMM for CUDA 12
 
 The name is optional and defaults to ``ommflow``.
 
@@ -51,8 +53,10 @@ The OpenFF packages are pinned to the versions conda-forge's own solver selects
 together, so the set is known to be mutually consistent and an upstream commit
 cannot change the environment underneath you.
 
-``numpy`` is capped below 2.3 because 2.4 and later are built against an
-x86-64-v2 baseline and abort on older HPC nodes.
+``numpy`` is held below 2, and Python therefore at 3.12, because numpy 1.x has
+no builds for 3.13 or later. numpy 2.4 and later are built against an
+x86-64-v2 baseline and abort on older HPC nodes, and AmberTools' bundled tools
+pin ``numpy<2`` themselves.
 
 The install finishes by assigning real AM1-BCC charges to ethanol through
 ``sqm``, so a broken AmberTools is reported at install time rather than on the
@@ -62,6 +66,35 @@ pip reports a dependency conflict naming ``proprep``, ``ndfes``, ``fetkutils``
 and ``edgembar``, which are AmberTools' own bundled tools pinned to
 ``numpy<2``. ommflow uses none of them and the install is unaffected.
 
+CUDA
+~~~~
+
+By default ``install.sh`` chooses no CUDA release, because many installs are on
+machines without an NVIDIA GPU. conda then picks one from the driver on the
+machine running the install, or the newest release when there is no driver.
+On a cluster that is usually a login node, and GPU nodes with an older driver
+then fail at the first run with
+``CUDA_ERROR_UNSUPPORTED_PTX_VERSION (222)``.
+
+Pass ``--cuda`` with the CUDA release to build for, the same choice OpenMM's
+own instructions make with ``cuda-version=12`` and ``openmm[cuda12]``:
+
+.. code-block:: console
+
+   bash install.sh --cuda 12                # conda: pins cuda-version=12
+   bash install.sh --pip-only --cuda 12     # pip: installs openmm[cuda12]
+
+The GPU nodes' driver must support the CUDA that gets installed: compare
+``conda list cuda-version`` in the environment with ``CUDA Version`` in
+``nvidia-smi`` on a GPU node. The conda path pins ``cuda-version`` and sets
+``CONDA_OVERRIDE_CUDA``, so it works from a login node with no GPU; a release
+conda-forge has no OpenMM build for is reported by conda's solver. Rerunning
+with ``--cuda`` also repins an existing environment.
+
+The check at the end of the install lists the CUDA platform only where an
+NVIDIA driver is present. Without one it says why CUDA did not load; confirm on
+a GPU node with ``python -m openmm.testInstallation``.
+
 Without conda
 ~~~~~~~~~~~~~
 
@@ -69,7 +102,8 @@ Without conda
 except automatic GAFF ligands, so a DMS or MAE input carrying a small molecule
 will be rejected. Use it only where conda is unavailable.
 
-It applies the same ``numpy<2.3`` cap as the conda path. ``pyproject.toml``
+It applies the same ``numpy<2`` pin as the conda path, so ``python3`` must be
+Python 3.12. ``pyproject.toml``
 leaves numpy unbounded, because that is what the library needs rather than what
 a given machine can run, so the constraint lives in the installer. Installing
 ommflow with bare pip instead of ``install.sh`` therefore takes the newest
