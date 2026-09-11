@@ -28,6 +28,15 @@ dependencies:
   - openmm >=8.5
   # antechamber and sqm, for the AM1-BCC charges GAFF needs. Not on PyPI.
   - ambertools
+  # Declared requirements of AmberTools' bundled Python tools (ndfes,
+  # fetkutils, proprep), which its conda package does not install. ommflow uses
+  # none of those tools; listing these keeps pip's dependency check quiet when
+  # the OpenFF stack is added afterwards. AmberTools itself pulls biopython
+  # unpinned, newer than proprep accepts.
+  - netcdf4
+  - pdb2pqr >=3.5
+  - requests >=2.28
+  - biopython >=1.83,<1.86
   # Plots the dihedral restraint potential; only the Agg backend is used.
   - matplotlib-base >=3.7
   # Secondary structure assignment for --dihedral-restraint ss.
