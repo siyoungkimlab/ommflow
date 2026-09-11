@@ -62,9 +62,12 @@ The install finishes by assigning real AM1-BCC charges to ethanol through
 ``sqm``, so a broken AmberTools is reported at install time rather than on the
 first ligand.
 
-pip reports a dependency conflict naming ``proprep``, ``ndfes``, ``fetkutils``
-and ``edgembar``, which are AmberTools' own bundled tools pinned to
-``numpy<2``. ommflow uses none of them and the install is unaffected.
+AmberTools' bundled Python tools (``ndfes``, ``fetkutils``, ``proprep``)
+declare requirements that AmberTools' conda package does not install, and pip
+reports each missing one when it adds the OpenFF stack. ommflow uses none of
+these tools, but ``environment.yml`` supplies their requirements anyway
+(``netcdf4``, ``pdb2pqr``, ``requests``, and ``biopython<1.86``) so the
+install finishes without spurious errors.
 
 CUDA
 ~~~~

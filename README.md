@@ -78,11 +78,12 @@ The install ends by assigning real AM1-BCC charges to ethanol through `sqm`,
 so a broken AmberTools is reported at install time rather than on your first
 ligand.
 
-Expect pip to print `ERROR: pip's dependency resolver does not currently take
-into account all the packages that are installed`, naming `proprep`, `ndfes`,
-`fetkutils` and `edgembar`. Those are AmberTools' own bundled tools, pinned to
-`numpy<2`. ommflow uses none of them, and the install is fine; the message is
-noise from packages that came along with AmberTools.
+AmberTools' bundled Python tools (`ndfes`, `fetkutils`, `proprep`) declare
+requirements that AmberTools' conda package does not install, and pip reports
+each missing one when it adds the OpenFF stack. ommflow uses none of these
+tools, but `environment.yml` supplies their requirements anyway (`netcdf4`,
+`pdb2pqr`, `requests`, and `biopython<1.86`) so the install finishes without
+spurious errors.
 
 ### CUDA
 
